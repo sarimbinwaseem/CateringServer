@@ -12,6 +12,9 @@ app.config.from_object(Config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+@app.route("/", methods = ["GET", "POST", "DELETE", "UPDATE"])
+def home():
+	return {"value": "OK"}, 200
 
 @app.route("/test", methods = ["GET", "POST", "DELETE", "UPDATE"])
 def test():
