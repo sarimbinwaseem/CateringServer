@@ -32,22 +32,23 @@ def signUp():
 
 	# Getting all required data.
 	try:
+		data = request.get_json()
 		userInformation = []
 
-		userInformation.append(request.args.get("username"))
-		userInformation.append(request.args.get("email"))
-		userInformation.append(request.args.get("fName"))
-		userInformation.append(request.args.get("lName"))
-		userInformation.append(request.args.get("password"))
-		userInformation.append(request.args.get("address"))
-		userInformation.append(request.args.get("phone"))
+		userInformation.append(data.get("username"))
+		userInformation.append(data.get("email"))
+		userInformation.append(data.get("fName"))
+		userInformation.append(data.get("lName"))
+		userInformation.append(data.get("password"))
+		userInformation.append(data.get("address"))
+		userInformation.append(data.get("phone"))
 		print(userInformation)
 
 		for data in userInformation:
 			if data is None:
 				raise AttributeError
 
-	
+
 	except ValueError as e:
 		print(e)
 		return "", 418
@@ -66,7 +67,7 @@ def signUp():
 		person = Customer.query.filter_by(username = userInformation[0]).first()
 		if person is not None:
 			return "unameexists"
-		
+
 		person = Customer.query.filter_by(email = userInformation[1]).first()
 		if person is not None:
 			return "emailexists"
@@ -99,10 +100,12 @@ def login():
 	try:
 		userInformation = []
 
-		userInformation.append(request.args.get("uniqueaddress"))
-		userInformation.append(request.args.get("password"))
+		data = request.get_json()
 
-		print(userInformation)
+		userInformation.append(data.get("uniqueaddress"))
+		userInformation.append(data.get("password"))
+
+		print("Data Recieved:", userInformation)
 
 		for data in userInformation:
 			if data is None:
@@ -110,10 +113,10 @@ def login():
 
 	except ValueError as e:
 		print(e)
-		return "", 418
+		return "Value Error", 200
 	except AttributeError as e:
 		print(e)
-		return "", 418
+		return "None data", 200
 
 	else:
 
