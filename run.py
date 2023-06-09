@@ -130,8 +130,76 @@ def login():
 		else:
 			return "icpw", 200 # Incorrect Password
 
+@app.route("/neworder", methods = ["POST"])
+def new_order():
+	try:
+		newOrder = []
+
+		data = request.get_json()
+
+		newOrder.append(data.get("customerID"))
+		newOrder.append(data.get("deliveryDate"))
+		newOrder.append(data.get("dishes"))
+
+		print("Data Recieved:", newOrder)
+
+		for data in newOrder:
+			if data is None:
+				raise AttributeError
+
+	except ValueError as e:
+		print(e)
+		return "Value Error", 200
+	except AttributeError as e:
+		print(e)
+		return "None data", 200
+
+	else:
+		# Check for cutomer entry in db first
+		# convert date to datetime format
+		db.session.add(Order(customer = newOrder[0],
+							dishes = newOrder[1],
+							deliveryDate = newOrder[2]))
+		db.session.commit()
+
+	return 1
+
 # def deleteAll():
 # 	del userInformation
+
+@app.route("/newdish", methods = ["POST"])
+def new_order():
+	try:
+		newDish = []
+
+		data = request.get_json()
+
+		newDish.append(data.get("dishName"))
+		newDish.append(data.get("dishPrice"))
+		newDish.append(data.get("servingCapacity"))
+
+		print("Data Recieved:", newDish)
+
+		for data in newDish:
+			if data is None:
+				raise AttributeError
+
+	except ValueError as e:
+		print(e)
+		return "Value Error", 200
+	except AttributeError as e:
+		print(e)
+		return "None data", 200
+
+	else:
+		db.session.add(Dish(
+			dishName = newDish[0],
+			dishPrice = newDish[1],
+			servingCapacity = newDish[2]
+			))
+		db.commit()
+
+	return 1
 
 def return_customer(uniqueaddress):
 	customer = Customer.query.filter_by(username = uniqueaddress).first()
@@ -150,6 +218,8 @@ def return_customer(uniqueaddress):
 		return None
 
 
+
+
 class Customer(db.Model):
 	customerID = db.Column("customerID", db.Integer, primary_key=True)
 	username = db.Column("username", db.String(20), unique=True, nullable=False)
@@ -164,8 +234,27 @@ class Customer(db.Model):
 	phone = db.Column("phone", db.String(13), unique=True, nullable=True)
 	creationTime = db.Column(db.DateTime(timezone = True), server_default = func.now())
 	
+	orders = db.relationship('Order', backref='customer')
+
 	def __repr__(self):
 		return f"Customer('{self.username}', '{self.email}', '{self.password}')"
+
+class Order(db.Model):
+	orderID = db.Column("orderID", db.Integer, primary_key=True)
+	customer = db.Column("customer", db.ForeignKey("customer.customerID"))
+	dishes = db.relationship("Dish", backref = "order")
+	deliveryDate = db.Column(db.DateTime(timezone = True))
+
+	def __repr__(self):
+		return f"Order('{self.orderID}', '{self.customer}', '{self.deliveryDate}')"
+
+class Dish(db.Model):
+	dishID = db.Column("dishID", db.Integer, primary_key=True)
+	dishName = db.Column("dishName", db.String(20), unique=True, nullable=False)
+	dishPrice = db.Column("dishPrice", db.Integer, nullable=False)
+	orderID = db.Column(db.Integer, db.ForeignKey("order.orderID"))
+	servingCapacity = db.Column("servingCapacity", db.Integer, nullable=False)
+
 
 if __name__ == "__main__":
 	db.create_all()
