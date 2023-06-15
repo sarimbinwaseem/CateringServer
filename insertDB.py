@@ -1,6 +1,7 @@
 #!/bin/python
-import bcrypt
-from run import db, Customer
+from run import app, db, Customer, Dish, Order
+app.app_context().push()
+db.create_all()
 
 def returnCustomer(id):
     person = Customer.query.filter_by(username = id).first()
@@ -11,7 +12,7 @@ def returnCustomer(id):
 
 
 r = input('''What to do: 
-1=> Insert Customer
+1=> Insert Dish
 2=> Delete Customer
 3=> Reset Password
 4=> Reset Hardware
@@ -20,16 +21,13 @@ r = input('''What to do:
 
 
 if r == '1':
-    username = input("Customername: ")
-    email = input("Email: ")
-    password = input("password: ")
-    company = input("Company: ")
+    dish_name = input("Dish Name: ")
+    dish_price = input("Price: ")
+    serving_capacity = input("Serving Capacity: ")
 
-    salt = bcrypt.gensalt()
-    password = bcrypt.hashpw(password, salt)
-    print(password)
-
-    db.session.add(Customer(username = username, email = email, password = password, company = company))
+    db.session.add(Dish(dishName = dish_name,
+        dishPrice = dish_price,
+        servingCapacity = serving_capacity))
     db.session.commit()
 
 elif r == '2':

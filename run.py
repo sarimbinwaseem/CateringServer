@@ -1,5 +1,6 @@
 #!/bin/python
 
+import datetime
 from flask import Flask, request #, redirect
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
@@ -10,7 +11,8 @@ from flask_migrate import Migrate
 app = Flask(__name__)
 app.config.from_object(Config)
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+migrate = Migrate(app, db, render_as_batch = True)
+# https://flask-migrate.readthedocs.io/en/latest/index.html
 
 @app.route("/", methods = ["GET", "POST", "DELETE", "UPDATE"])
 def home():
@@ -137,7 +139,8 @@ def new_order():
 
 		data = request.get_json()
 
-		newOrder.append(data.get("customerID"))
+		# UA = Unique Address i.e. phone,  | email, username
+		newOrder.append(data.get("customerUA"))
 		newOrder.append(data.get("deliveryDate"))
 		newOrder.append(data.get("dishes"))
 
@@ -154,21 +157,30 @@ def new_order():
 		print(e)
 		return "None data", 200
 
+	except Exception as e:
+		print(e)
+		return "some error occured", 200
+
 	else:
-		# Check for cutomer entry in db first
-		# convert date to datetime format
-		db.session.add(Order(customer = newOrder[0],
-							dishes = newOrder[1],
-							deliveryDate = newOrder[2]))
+		customer = return_customer(newOrder[0])
+		if customer is None:
+			return "irfa"
+
+		# FOR DISH
+		dish = Dish.query.filter_by(dishID = newOrder[1]).first()
+
+		date = convert_date(newOrder[2])
+
+		db.session.add(Order(customer = customer.customerID,
+							dishes = dish,
+							deliveryDate = date))
 		db.session.commit()
 
 	return 1
 
-# def deleteAll():
-# 	del userInformation
 
 @app.route("/newdish", methods = ["POST"])
-def new_order():
+def new_dish():
 	try:
 		newDish = []
 
@@ -201,6 +213,13 @@ def new_order():
 
 	return 1
 
+def convert_date(rawdate) -> datetime.date:
+	# Date
+	# convert date to datetime format
+	rawdate = newOrder[2].split('|') # yyyy|M|D
+	date = datetime.date(*rawdate)
+	return date
+
 def return_customer(uniqueaddress):
 	customer = Customer.query.filter_by(username = uniqueaddress).first()
 	if customer is not None:
@@ -217,23 +236,22 @@ def return_customer(uniqueaddress):
 	else:
 		return None
 
-
-
-
+# Create Customer then Dishes then Orders
 class Customer(db.Model):
-	customerID = db.Column("customerID", db.Integer, primary_key=True)
-	username = db.Column("username", db.String(20), unique=True, nullable=False)
-	email = db.Column("email", db.String(60), unique=True, nullable=False)
+	customerID = db.Column(db.Integer, primary_key=True)
+	username = db.Column(db.String(20), unique=True, nullable=False)
+	email = db.Column(db.String(60), unique=True, nullable=False)
 
-	firstName = db.Column("fName", db.String(20), nullable=False)
-	lastName = db.Column("lName", db.String(20), nullable=False)
+	firstName = db.Column(db.String(20), nullable=False)
+	lastName = db.Column(db.String(20), nullable=False)
 
-	password = db.Column("password", db.String(30), nullable=False)
+	password = db.Column(db.String(30), nullable=False)
 
-	address = db.Column("address", db.String(60), nullable=False)
-	phone = db.Column("phone", db.String(13), unique=True, nullable=True)
+	address = db.Column(db.String(60), nullable=False)
+	phone = db.Column(db.String(13), unique=True, nullable=True)
 	creationTime = db.Column(db.DateTime(timezone = True), server_default = func.now())
 	
+	# One Customer can have multiple orders
 	orders = db.relationship('Order', backref='customer')
 
 	def __repr__(self):
@@ -241,9 +259,15 @@ class Customer(db.Model):
 
 class Order(db.Model):
 	orderID = db.Column("orderID", db.Integer, primary_key=True)
-	customer = db.Column("customer", db.ForeignKey("customer.customerID"))
-	dishes = db.relationship("Dish", backref = "order")
+	# One Order can have one Customer
+	customerID = db.Column(db.Integer, db.ForeignKey("customer.customerID"))
+	
+	# One Order can have multiple Dishes.
+	dishes = db.Column(db.String, nullable = False)
 	deliveryDate = db.Column(db.DateTime(timezone = True))
+
+	# One Order can have one Rider
+	riderID = db.Column(db.Integer, db.ForeignKey("rider.riderID"))
 
 	def __repr__(self):
 		return f"Order('{self.orderID}', '{self.customer}', '{self.deliveryDate}')"
@@ -252,10 +276,19 @@ class Dish(db.Model):
 	dishID = db.Column("dishID", db.Integer, primary_key=True)
 	dishName = db.Column("dishName", db.String(20), unique=True, nullable=False)
 	dishPrice = db.Column("dishPrice", db.Integer, nullable=False)
-	orderID = db.Column(db.Integer, db.ForeignKey("order.orderID"))
 	servingCapacity = db.Column("servingCapacity", db.Integer, nullable=False)
 
+	# orderID = db.Column(db.Integer, db.ForeignKey("order.orderID"))
+
+class Rider(db.Model):
+	riderID = db.Column(db.Integer, primary_key=True)
+	riderName = db.Column(db.String(20), unique=True, nullable=False)
+	riderSalary = db.Column(db.Integer, nullable=False)
+	 # = db.Column("servingCapacity", db.Integer, nullable=False)
+
+	 # One Rider can have multiple orders
+	todeliver = db.relationship('Order', backref='rider')
 
 if __name__ == "__main__":
-	db.create_all()
+	# db.create_all()
 	app.run("0.0.0.0", port = 4023, debug = True)
